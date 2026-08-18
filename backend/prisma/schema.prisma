@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rol {
+  ADMIN
+  OPERADOR
+  VISUALIZACION
+}
+
+enum EstadoEvento {
+  PROXIMO
+  ABIERTO
+  CERRADO
+  EN_CURSO
+  CONCLUIDO
+}
+
+enum TipoRegistro {
+  PRE_REGISTRO
+  REGISTRO_EVENTO
+}
+
+enum EstadoInvitado {
+  REGISTRADO
+  PRESENTE
+}
+
+model Usuario {
+  id             String    @id @default(uuid())
+  nombre         String    @db.VarChar(150)
+  correo         String    @unique @db.VarChar(255)
+  passwordHash   String    @db.VarChar(255)
+  rol            Rol
+  activo         Boolean   @default(true)
+  creadoEn       DateTime  @default(now())
+  actualizadoEn  DateTime  @updatedAt
+
+  eventosCreados     Evento[]              @relation("EventoCreador")
+  asignaciones       AsignacionOperador[]
+  invitadosRegistrados Invitado[]          @relation("InvitadoRegistrador")
+
+  @@map("usuarios")
+}
+
+model Evento {
+  id                    String       @id @default(uuid())
+  nombre                String       @db.VarChar(255)
+  descripcion           String?      @db.Text
+  imagenUrl             String?      @db.VarChar(500)
+  fechaInicioRegistro   DateTime     @db.Date
+  fechaCierreRegistro   DateTime     @db.Date
+  estado                EstadoEvento @default(PROXIMO)
+  permitirAcompanante   Boolean      @default(false)
+  creadoPor             String
+  creadoEn              DateTime     @default(now())
+  actualizadoEn         DateTime     @updatedAt
+
+  creador            Usuario              @relation("EventoCreador", fields: [creadoPor], references: [id])
+  ciudades           CiudadEvento[]
+  asignaciones       AsignacionOperador[]
+  invitados          Invitado[]
+  correlativos       CodigoCorrelativo[]
+
+  @@map("eventos")
+}
+
+model CiudadEvento {
+  id           String   @id @default(uuid())
+  eventoId     String
+  nombreCiudad String   @db.VarChar(100)
+  iniciales    String   @db.VarChar(5)
+  fechaEvento  DateTime @db.Date
+
+  evento       Evento             @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  invitados    Invitado[]
+  correlativos CodigoCorrelativo[]
+
+  @@unique([eventoId, iniciales])
+  @@map("ciudades_evento")
+}
+
+model AsignacionOperador {
+  id          String   @id @default(uuid())
+  usuarioId   String
+  eventoId    String
+  asignadoEn  DateTime @default(now())
+
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  evento      Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, eventoId])
+  @@map("asignaciones_operador")
+}
+
+model Invitado {
+  id                  String         @id @default(uuid())
+  eventoId            String
+  ciudadEventoId      String
+  nombreCompleto      String         @db.VarChar(200)
+  celular             String         @db.VarChar(20)
+  codigoCliente       String         @db.VarChar(100)
+  codigoUnico         String         @db.VarChar(30)
+  tipoRegistro        TipoRegistro
+  estado              EstadoInvitado @default(REGISTRADO)
+  consentimientoDatos Boolean
+  registradoPor       String?
+  registradoEn        DateTime       @default(now())
+  marcadoPresenteEn   DateTime?
+
+  evento       Evento       @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  ciudadEvento CiudadEvento @relation(fields: [ciudadEventoId], references: [id])
+  registrador  Usuario?     @relation("InvitadoRegistrador", fields: [registradoPor], references: [id])
+
+  @@unique([eventoId, celular])
+  @@unique([eventoId, nombreCompleto])
+  @@unique([eventoId, codigoUnico])
+  @@map("invitados")
+}
+
+model CodigoCorrelativo {
+  id                 String       @id @default(uuid())
+  eventoId           String
+  ciudadEventoId     String
+  tipo               TipoRegistro
+  ultimoCorrelativo  Int          @default(0)
+
+  evento       Evento       @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  ciudadEvento CiudadEvento @relation(fields: [ciudadEventoId], references: [id], onDelete: Cascade)
+
+  @@unique([eventoId, ciudadEventoId, tipo])
+  @@map("codigos_correlativos")
+}

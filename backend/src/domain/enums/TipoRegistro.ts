@@ -1,0 +1,4 @@
+export enum TipoRegistro {
+  PRE_REGISTRO = 'PRE_REGISTRO',
+  REGISTRO_EVENTO = 'REGISTRO_EVENTO',
+}

@@ -1,0 +1,7 @@
+export enum EstadoEvento {
+  PROXIMO = 'PROXIMO',
+  ABIERTO = 'ABIERTO',
+  CERRADO = 'CERRADO',
+  EN_CURSO = 'EN_CURSO',
+  CONCLUIDO = 'CONCLUIDO',
+}
